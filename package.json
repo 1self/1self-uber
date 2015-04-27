@@ -1,0 +1,16 @@
+{
+  "name": "1self-uber",
+  "version": "0.0.1",
+  "description": "Uber for 1self",
+  "main": "app.js",
+  "keywords": [
+    "1self",
+    "uber"
+  ],
+  "author": "Douglas Vaz",
+  "devDependencies": {
+    "babel": "^5.1.13",
+    "gulp": "^3.8.11",
+    "gulp-babel": "^5.1.0"
+  }
+}
