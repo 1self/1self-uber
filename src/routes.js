@@ -8,10 +8,8 @@ module.exports = function(app) {
 	// Insert routes below
 	console.log('setting up routes');
 	app.get('/', function(req, res){
-		console.log('Hello');
 		res.sendStatus(200);
 	})
 	app.use('/api/setup', setupRoute);
-	//app.use('/api/setup', setupRoute);
 	app.use('/api/callback', callbackRoute);
 };
