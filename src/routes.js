@@ -1,15 +1,13 @@
 module.exports = function(app) {
 
-	var setupRoute = require('./api/setup');
-	//var setupRoute = require('./api/setup')(app);
-	var callbackRoute = require('./api/callback');
-
-
-	// Insert routes below
-	console.log('setting up routes');
-	app.get('/', function(req, res){
+	var setup = require('./api.routes/setup.controller');
+	var callback = require('./api.routes/callback.controller');
+	var index = function(req, res){
 		res.sendStatus(200);
-	})
-	app.use('/api/setup', setupRoute);
-	app.use('/api/callback', callbackRoute);
+	};
+
+	console.log('Setting up routes');
+	app.get('/', index);
+	app.use('/api/setup', setup);
+	app.use('/api/callback', callback);
 };

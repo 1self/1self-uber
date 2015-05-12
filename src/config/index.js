@@ -11,6 +11,8 @@ module.exports = {
 
   state: process.env.UBER_STATE || '',
 
-  NODE_ENV: process.env.NODE_ENV || 'production'
+  NODE_ENV: process.env.NODE_ENV || 'production',
+
+  CONTEXT_URI: process.env.CONTEXT_URI
 
 };

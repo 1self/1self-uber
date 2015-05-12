@@ -2,18 +2,18 @@
 
 var express = require('express');
 var router = express.Router();
-var config = require('../../config');
+var config = require('../config');
 var request = require('request');
 var Q = require('q');
 
-var getOAuthBearerToken = function(url, data) {
+var getOAuthBearerToken = function(endpoint, data) {
 	var deferred = Q.defer();
 
-	request.post({url: url, form: data}, function(err, response, body){
+	request.post(endpoint, {form: data, json: true}, function(err, response, body){
 		if(err) {
 			deferred.reject(err);
 		} else {
-			deferred.resolve(response);
+			deferred.resolve(body);
 		}
 	});
 
@@ -21,8 +21,6 @@ var getOAuthBearerToken = function(url, data) {
 }
 
 var authenticateUser = function authenticateUser(req, res, next) {
-	console.log("CALLBACK");
-
 	var authorization_code = req.query.code;
 	var state = req.query.state;
 	console.log(authorization_code, state);

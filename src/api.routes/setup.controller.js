@@ -3,7 +3,7 @@
 var express = require('express');
 var router = express.Router();
 var request = require('request');
-var config = require('../../config');
+var config = require('../config');
 
 var clientID = config.client_id;
 var clientSecret = config.client_secret;
@@ -14,7 +14,7 @@ var uberAuthPath = '/oauth/authorize';
 var authenticateUser = function(req, res, next) {
 	//Authorize
 	var uberAuthUrl = uberBaseSite + uberAuthPath;
-	var url = uberAuthUrl + '?client_id=' + clientID + '&response_type=code';// + '&state=' + uberState;
+	var url = uberAuthUrl + '?client_id=' + clientID + '&response_type=code' + '&state=' + uberState;
 	console.log(url);
 	res.redirect(url);
 }
