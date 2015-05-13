@@ -13,6 +13,8 @@ module.exports = {
 
   NODE_ENV: process.env.NODE_ENV || 'production',
 
-  CONTEXT_URI: process.env.CONTEXT_URI
+  CONTEXT_URI: process.env.CONTEXT_URI,
+
+  GEONAME_USER: process.env.GEONAME_USER
 
 };
