@@ -11,6 +11,10 @@ module.exports = {
 
   client_secret: process.env.UBER_SECRET,
 
+  app_id: '',
+
+  app_secret: '',
+
   state: process.env.UBER_STATE || '',
 
   NODE_ENV: process.env.NODE_ENV || 'production',
