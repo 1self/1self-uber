@@ -6,7 +6,10 @@ var config = require('../config');
 var request = require('request');
 var Q = require('q');
 var authModule = require('../auth');
+var qdServiceModule = require('../qdService');
+
 var auth = new authModule();
+var qdService = new qdServiceModule(config.CONTEXT_URI); 
 
 var cache = {
 	products: {}
@@ -88,6 +91,150 @@ var uberProductIDToName = function(id, authToken) {
 	return deferred.promise;
 };
 
+var getHistory = function(access_token, offset) {
+	if (!offset) offset = 0;
+	var deferred = Q.defer();
+	var opts = {
+		url: 'https://api.uber.com/v1.2/history?offset='+ offset +'&limit=50',
+		json: true,
+		headers: {
+			'Authorization': "Bearer " + access_token
+		}
+	};
+
+	request(opts, function(error, _, body) {
+		if (error || !body.hasOwnProperty('history')) {
+			console.log("Request to 1.2/history failed");
+			deferred.reject(error);
+		} else {
+			var latestSyncField = offset;
+			var transforms = body.history.map(function(trip) {
+				var trippy = {
+					latestSyncField: ++latestSyncField,
+					location: {
+						'lat': trip.start_city.latitude,
+						'long': trip.start_city.longitude
+					},
+					request: {},
+					start: {},
+					end: {}
+				};
+				var deferred = Q.defer();
+				var mileToMeter = 1.60934 * 1000;
+
+				uberProductIDToName(trip.product_id, access_token)
+					.then(function(desc) {
+						trippy.request.product = desc;
+						return Q.resolve();
+					})
+					.then(function() {
+						return timzoneOffsetFromLocation(trip.start_city.latitude, trip.start_city.longitude);
+					})
+					.then(function(offset) {
+						trippy.request.dateTime = UNIXToISO(trip.request_time, offset);
+						trippy.request.city = trip.start_city.display_name;
+						trippy.request.latestSyncField = trippy.latestSyncField + 0.1;
+						
+						trippy.start.dateTime = UNIXToISO(trip.start_time, offset);
+						trippy.start['wait-duration'] = trip.start_time - trip.request_time;
+						trippy.start.latestSyncField = trippy.latestSyncField + 0.2;
+
+						trippy.end.dateTime = UNIXToISO(trip.end_time, offset);
+						trippy.end.duration = trip.end_time - trip.start_time;
+						trippy.end.distance = trip.distance * mileToMeter;
+						trippy.end.status = trip.status;
+						trippy.end.latestSyncField = trippy.latestSyncField + 0.3;
+
+						return Q.resolve();
+					})
+					.done(function(err) {
+						if (err) {
+							console.log("Transform error ", err);
+						}
+						deferred.resolve(trippy);
+					});
+
+				return deferred.promise;
+			});
+
+			Q.all(transforms)
+				.then(function(results) {
+					deferred.resolve(results);
+				})
+				.catch(function(err) {
+					console.log('151: ', err);
+					deferred.reject(err);
+				});
+		}
+	});
+	return deferred.promise;
+};
+
+var formatRequestEvent = function(event) {
+	return {
+		"location": event.location,
+		"actionTags": [
+			"Request"
+		],
+		"source": "Uber",
+		"objectTags": [
+			"Transport",
+			"Taxi",
+			"Uber",
+			event.request.product
+		],
+		"dateTime": event.request.dateTime,
+		"latestSyncField": event.request.latestSyncField,
+		"properties": {
+			"product": event.request.product,
+			"city": event.request.city
+		}
+	};
+};
+
+var formatStartEvent = function(event) {
+	return {
+		"location": event.location,
+		"actionTags": [
+			"Start"
+		],
+		"source": "Uber",
+		"objectTags": [
+			"Transport",
+			"Taxi",
+			"Uber",
+			event.request.product
+		],
+		"dateTime": event.start.dateTime,
+		"latestSyncField": event.start.latestSyncField,
+		"properties": {
+			"wait-duration": event.start['wait-duration']
+		}
+	};
+};
+
+var formatEndEvent = function(event) {
+	return {
+		"location": event.location,
+		"actionTags": [
+			"Complete"
+		],
+		"source": "Uber",
+		"objectTags": [
+			"Transport",
+			"Taxi",
+			"Uber",
+			event.request.product
+		],
+		"dateTime": event.end.dateTime,
+		"latestSyncField": event.end.latestSyncField,
+		"properties": {
+			"duration": event.end.duration,
+			"distance": event.end.distance
+		}
+	};
+};
+
 var syncEvents = function(req, res, next) {
 	var checkToken = Q.fcall(function() {
 		if (req.session.hasOwnProperty('access_token')) {
@@ -98,68 +245,13 @@ var syncEvents = function(req, res, next) {
 		}
 	});
 
-	var getHistory = function(access_token) {
-		var deferred = Q.defer();
-		var opts = {
-			url: 'https://api.uber.com/v1.2/history?limit=50',
-			json: true,
-			headers: {
-				'Authorization': "Bearer " + access_token
-			}
-		};
-
-		request(opts, function(error, _, body) {
-			if (error) {
-				console.log("Request to 1.2/history failed");
-				deferred.reject(error);
-			} else {
-				var transforms = body.history.map(function(trip) {
-					var deferred = Q.defer();
-					var mileToKilometer = 1.60934;
-
-					trip.distance = trip.distance * mileToKilometer;
-
-					uberProductIDToName(trip.product_id, access_token)
-						.then(function(desc) {
-							trip.product = desc;
-							return Q.resolve();
-						})
-						.then(function() {
-							return timzoneOffsetFromLocation(trip.start_city.latitude, trip.start_city.longitude);
-						})
-						.then(function(offset) {
-							trip.request_time = UNIXToISO(trip.request_time, offset);
-							trip.start_time = UNIXToISO(trip.start_time, offset);
-							trip.end_time = UNIXToISO(trip.end_time, offset);
-							return Q.resolve();
-						})
-						.done(function(err) {
-							if(err) {
-								console.log("Transform error ", err);
-							}
-							deferred.resolve(trip);
-						});
-
-					return deferred.promise;
-				});
-
-				Q.all(transforms)
-				.then(function(results) {
-					deferred.resolve(results);
-				})
-				.catch(function(err) {
-					console.log('151: ', err);
-					deferred.reject(err);
-				});
-			}
-		});
-		return deferred.promise;
-	};
-
 	checkToken
 	.then(getHistory)
 	.then(function(results){
-		res.send(results);
+		var events = results.reduce(function(acc, e){
+			return acc.concat(formatRequestEvent(e)).concat(formatStartEvent(e)).concat(formatEndEvent(e));
+		}, []);
+		res.send(events);
 	})
 	.catch(function(err){
 		console.log(err);

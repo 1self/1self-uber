@@ -2,12 +2,12 @@ var requestModule = require('request');
 var Q = require('q');
 var config = require('./config');
 
-module.exports = function () {
-    var appId = conifg.app_id;
-    var appSecret = consfig.app_secret;
+module.exports = function (appUri) {
+    var appId = config.app_id;
+    var appSecret = config.app_secret;
     //var oneselfUri = process.env.CONTEXT_URI;
 
-    this.registerStream = function (oneselfUsername, token, appUri, callbackUrl) {
+    this.registerStream = function (oneselfUsername, token, callbackUrl) {
         var deferred = Q.defer();
         console.log("Registering stream...", oneselfUsername, token, callbackUrl);
 
@@ -40,7 +40,7 @@ module.exports = function () {
         return deferred.promise;
     };
 
-    this.sendBatchEvents = function (events, streamInfo, appUri) {
+    this.sendBatchEvents = function (events, streamInfo) {
         var deferred = Q.defer();
         var options = {
             method: 'POST',
@@ -65,7 +65,7 @@ module.exports = function () {
         return deferred.promise;
     };
 
-    this.sendEvent = function (event, streamInfo, appUri) {
+    this.sendEvent = function (event, streamInfo) {
         var deferred = Q.defer();
         var options = {
             method: 'POST',
@@ -90,7 +90,7 @@ module.exports = function () {
         return deferred.promise;
     };
 
-    this.link = function(oneselfUsername, streamId, appUri) {
+    this.link = function(oneselfUsername, streamId) {
         var deferred = Q.defer();
         var options = {
             method: 'POST',
