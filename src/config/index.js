@@ -5,6 +5,8 @@ module.exports = {
   port:     process.env.PORT ||
             9005,
 
+  session_secret: process.env.SESSION_SECRET,
+
   client_id: process.env.UBER_CLIENT_ID,
 
   client_secret: process.env.UBER_SECRET,
