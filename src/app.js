@@ -11,7 +11,10 @@ var server = require('http').createServer(app);
 app.use(session({
   secret: config.session_secret,
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+  	secure: false
+  }
 }));
 
 app.use(bodyParser.urlencoded({
