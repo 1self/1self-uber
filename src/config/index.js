@@ -11,9 +11,9 @@ module.exports = {
 
   client_secret: process.env.UBER_SECRET,
 
-  app_id: '',
+  app_id: process.env.UBER_APP_ID,
 
-  app_secret: '',
+  app_secret: process.env.UBER_APP_SECRET,
 
   state: process.env.UBER_STATE || '',
 
