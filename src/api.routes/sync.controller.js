@@ -12,7 +12,8 @@ var auth = new authModule();
 var qdService = new qdServiceModule(config.CONTEXT_URI); 
 
 var cache = {
-	products: {}
+	products: {},
+	requests: {}
 };
 
 var getRefreshedAccessToken = function() {
@@ -91,6 +92,29 @@ var uberProductIDToName = function(id, authToken) {
 	return deferred.promise;
 };
 
+var uberRequestIDToReceipt = function(id, authToken) {
+	var deferred = Q.defer();
+	if (!cache.requests.hasOwnProperty(id)) {
+		var opts = {
+			url: "https://api.uber.com/v1/requests/" + id + "/receipt",
+			json: true,
+			headers: {
+				'Authorization': "Bearer " + authToken
+			}
+		};
+		request(opts, function(err, response, body) {
+			if (err) deferred.reject(err);
+			else {
+				cache.requests[id] = body.total_charged;
+				deferred.resolve(body.total_charged);
+			}
+		});
+	} else {
+		deferred.resolve(cache.products[id]);
+	}
+	return deferred.promise;
+};
+
 var getHistory = function(access_token, offset) {
 	if (!offset) offset = 0;
 	var deferred = Q.defer();
@@ -111,6 +135,7 @@ var getHistory = function(access_token, offset) {
 			var transforms = body.history.map(function(trip) {
 				var trippy = {
 					latestSyncField: ++latestSyncField,
+					request_id: trip.request_id,
 					location: {
 						'lat': trip.start_city.latitude,
 						'long': trip.start_city.longitude
@@ -119,12 +144,20 @@ var getHistory = function(access_token, offset) {
 					start: {},
 					end: {}
 				};
+
 				var deferred = Q.defer();
 				var mileToMeter = 1.60934 * 1000;
 
 				uberProductIDToName(trip.product_id, access_token)
 					.then(function(desc) {
 						trippy.request.product = desc;
+						return Q.resolve();
+					})
+					.then(function(){
+						return uberRequestIDToReceipt(trip.request_id, access_token);
+					})
+					.then(function(total_charged){
+						trippy.end.charge = total_charged;
 						return Q.resolve();
 					})
 					.then(function() {
@@ -173,15 +206,15 @@ var getHistory = function(access_token, offset) {
 var formatRequestEvent = function(event) {
 	return {
 		"location": event.location,
+		"chainId": event.request_id,
 		"actionTags": [
-			"Request"
+			"request"
 		],
 		"source": "Uber",
 		"objectTags": [
-			"Transport",
-			"Taxi",
-			"Uber",
-			event.request.product
+			"transport",
+			"taxi",
+			"uber"
 		],
 		"dateTime": event.request.dateTime,
 		"latestSyncField": event.request.latestSyncField,
@@ -195,15 +228,15 @@ var formatRequestEvent = function(event) {
 var formatStartEvent = function(event) {
 	return {
 		"location": event.location,
+		"chainId": event.request_id,
 		"actionTags": [
-			"Start"
+			"start"
 		],
 		"source": "Uber",
 		"objectTags": [
-			"Transport",
-			"Taxi",
-			"Uber",
-			event.request.product
+			"transport",
+			"taxi",
+			"uber"
 		],
 		"dateTime": event.start.dateTime,
 		"latestSyncField": event.start.latestSyncField,
@@ -214,21 +247,23 @@ var formatStartEvent = function(event) {
 };
 
 var formatEndEvent = function(event) {
+	var costProp = "cost-"+event.end.charge.charAt(0);
 	return {
+		"chainId": event.request_id,
 		"location": event.location,
 		"actionTags": [
-			"Complete"
+			"complete"
 		],
 		"source": "Uber",
 		"objectTags": [
-			"Transport",
-			"Taxi",
-			"Uber",
-			event.request.product
+			"transport",
+			"taxi",
+			"uber"
 		],
 		"dateTime": event.end.dateTime,
 		"latestSyncField": event.end.latestSyncField,
 		"properties": {
+			costProp: parseFloat(event.end.charge.substring(1), 10),
 			"duration": event.end.duration,
 			"distance": event.end.distance
 		}
