@@ -15,7 +15,7 @@ module.exports = function() {
 
   this.getUberOAuthUrl = function() {
     var uberAuthUrl = uberBaseSite + uberAuthPath;
-    var url = uberAuthUrl + '?client_id=' + clientID + '&scope=history' +'&response_type=code' + '&state=' + uberState;
+    var url = uberAuthUrl + '?client_id=' + clientID + '&scope=history%20request_receipt' +'&response_type=code' + '&state=' + uberState;
     return url;
   };
 
@@ -61,5 +61,7 @@ function decrypt(text){
   dec += decipher.final('utf8');
   return dec;
 }
+
+
 
 };
