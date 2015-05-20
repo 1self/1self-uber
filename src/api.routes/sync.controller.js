@@ -247,8 +247,8 @@ var formatStartEvent = function(event) {
 };
 
 var formatEndEvent = function(event) {
-	var costProp = "cost-"+event.end.charge.charAt(0);
-	return {
+	var costProp = "cost-"+event.end.charge.charAt(0); //No ES6 computed prop love :( 
+	var obj = {
 		"chainId": event.request_id,
 		"location": event.location,
 		"actionTags": [
@@ -263,11 +263,12 @@ var formatEndEvent = function(event) {
 		"dateTime": event.end.dateTime,
 		"latestSyncField": event.end.latestSyncField,
 		"properties": {
-			costProp: parseFloat(event.end.charge.substring(1), 10),
-			"duration": event.end.duration,
-			"distance": event.end.distance
 		}
 	};
+	obj.properties[costProp] = parseFloat(event.end.charge.substring(1), 10);
+	obj.properties["duration"] = event.end.duration;
+	obj.properties["distance"] = event.end.distance;
+	return obj;
 };
 
 var syncEvents = function(req, res, next) {
